@@ -11,7 +11,7 @@ Minimal ve hızlı çalışan, çoklu platformlarda kullanıcı adı (username) 
 * 🧠 False-positive azaltma (akıllı kontrol)
 * 📊 Canlı progress (%)
 * 📁 Otomatik JSON export
-* 🖥️ Terminal tarzı hacker arayüzü
+* 🖥️ Terminal tarzı arayüz
 
 ---
 
