@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# osint_username.py — dorukcodes
+# osint_username.py — dorukcodes (stability upgrade)
 
 import requests
 import threading
@@ -17,7 +17,7 @@ CYAN = "\033[96m"
 MAGENTA = "\033[95m"
 RESET = "\033[0m"
 
-# 🔥 BANNER (imza)
+# 🔥 BANNER
 BANNER = f"""
 {MAGENTA}
 ╔══════════════════════════════════════╗
@@ -27,7 +27,12 @@ BANNER = f"""
 {RESET}
 """
 
-HEADERS = {"User-Agent": "Mozilla/5.0"}
+# 🔧 GELİŞMİŞ HEADERS
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Connection": "keep-alive"
+}
 
 # 🌐 SİTELER
 SITES = {
@@ -71,7 +76,12 @@ def is_valid(text, errors):
 def request_retry(url):
     for _ in range(2):
         try:
-            return requests.get(url, headers=HEADERS, timeout=6)
+            return requests.get(
+                url,
+                headers=HEADERS,
+                timeout=6,
+                allow_redirects=True
+            )
         except:
             time.sleep(0.5)
     return None
@@ -87,21 +97,26 @@ def worker(username):
         full_url = url.format(username)
         r = request_retry(full_url)
 
-        if r and r.status_code == 200 and is_valid(r.text, errors):
-            with lock:
-                print(f"{GREEN}[FOUND] {site:<15}{RESET}")
-                results.append((site, full_url))
-                stats["found"] += 1
-        elif r:
-            with lock:
-                print(f"{RED}[MISS ] {site:<15}{RESET}")
-                stats["not_found"] += 1
+        if r:
+            if r.status_code == 200 and is_valid(r.text, errors):
+                with lock:
+                    print(f"{GREEN}[FOUND] {site:<15}{RESET}")
+                    results.append((site, full_url))
+                    stats["found"] += 1
+            elif r.status_code in [403, 429]:
+                with lock:
+                    print(f"{YELLOW}[BLOCK] {site:<15}{RESET}")
+                    stats["errors"] += 1
+            else:
+                with lock:
+                    print(f"{RED}[MISS ] {site:<15}{RESET}")
+                    stats["not_found"] += 1
         else:
             with lock:
-                print(f"{YELLOW}[ERROR] {site:<15}{RESET}")
+                print(f"{YELLOW}[UNKWN] {site:<15}{RESET}")
                 stats["errors"] += 1
 
-        time.sleep(0.1)
+        time.sleep(0.15)  # daha güvenli delay
         queue.task_done()
 
 
@@ -117,7 +132,7 @@ def save(username, fmt):
         with open(name + ".json", "w") as f:
             json.dump(results, f, indent=2)
 
-    print(f"{CYAN}[✔] Results saved → {name}.{fmt}{RESET}")
+    print(f"{CYAN}[✔] Saved → {name}.{fmt}{RESET}")
 
 
 def main():
@@ -128,8 +143,8 @@ def main():
     parser.add_argument("--save", choices=["txt", "json"])
     args = parser.parse_args()
 
-    print(f"{CYAN}[+] Target locked → {args.username}{RESET}")
-    print(f"{CYAN}[+] Starting scan...{RESET}\n")
+    print(f"{CYAN}[+] Target → {args.username}{RESET}")
+    print(f"{CYAN}[+] Initializing scan engine...{RESET}\n")
 
     for site, data in SITES.items():
         queue.put((site, data))
@@ -143,7 +158,7 @@ def main():
     print(f"{CYAN}[✓] Scan completed{RESET}")
     print(f"{GREEN}Found     : {stats['found']}{RESET}")
     print(f"{RED}Not Found : {stats['not_found']}{RESET}")
-    print(f"{YELLOW}Errors    : {stats['errors']}{RESET}")
+    print(f"{YELLOW}Issues    : {stats['errors']}{RESET}")
     print(f"{MAGENTA}══════════════════════════════════════{RESET}")
 
     if results:
